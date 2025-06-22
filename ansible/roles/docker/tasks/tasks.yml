@@ -1,0 +1,84 @@
+# Docker Installation Role
+# Installs Docker and Docker Compose on target systems
+
+---
+- name: Include OS-specific variables
+  include_vars: "{{ ansible_os_family | lower }}.yml"
+
+- name: Install Docker prerequisites
+  package:
+    name: "{{ docker_prerequisites }}"
+    state: present
+  become: yes
+
+- name: Add Docker GPG key
+  apt_key:
+    url: "{{ docker_gpg_key_url }}"
+    state: present
+  become: yes
+  when: ansible_os_family == "Debian"
+
+- name: Add Docker repository
+  apt_repository:
+    repo: "{{ docker_repo }}"
+    state: present
+    update_cache: yes
+  become: yes
+  when: ansible_os_family == "Debian"
+
+- name: Install Docker packages
+  package:
+    name: "{{ docker_packages }}"
+    state: present
+  become: yes
+  when: docker_install_method == "repository"
+
+- name: Start and enable Docker service
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+  become: yes
+
+- name: Add users to docker group
+  user:
+    name: "{{ item }}"
+    groups: docker
+    append: yes
+  loop: "{{ docker_users }}"
+  become: yes
+  when: docker_users is defined
+
+- name: Install Docker Compose
+  get_url:
+    url: "{{ docker_compose_url }}"
+    dest: /usr/local/bin/docker-compose
+    mode: '0755'
+  become: yes
+  when: docker_compose_install | default(false)
+
+- name: Create Docker Compose symlink
+  file:
+    src: /usr/local/bin/docker-compose
+    dest: /usr/bin/docker-compose
+    state: link
+  become: yes
+  when: docker_compose_install | default(false)
+
+- name: Verify Docker installation
+  command: docker --version
+  register: docker_version
+  changed_when: false
+
+- name: Verify Docker Compose installation
+  command: docker-compose --version
+  register: docker_compose_version
+  changed_when: false
+  when: docker_compose_install | default(false)
+
+- name: Display Docker version information
+  debug:
+    msg: |
+      Docker installation completed:
+      {{ docker_version.stdout }}
+      {% if docker_compose_install | default(false) %}{{ docker_compose_version.stdout }}{% endif %}

@@ -1,0 +1,103 @@
+# Jenkins Role Default Variables
+
+# Deployment configuration
+deployment_mode: "{{ lookup('env', 'DEPLOYMENT_MODE') | default('local') }}"
+deployment_type: container  # Always using containers now
+
+# Jenkins installation paths
+jenkins_home_dir: "{{ deployment_mode == 'local' and '/workspace/jenkins-deploy' or '/opt/jenkins' }}"
+jenkins_user: "{{ deployment_mode == 'local' and 'ansible' or 'jenkins' }}"
+jenkins_group: "{{ deployment_mode == 'local' and 'ansible' or 'jenkins' }}"
+
+# Jenkins master configuration
+jenkins_version: "2.401.3-lts"
+jenkins_master_port: 8080
+jenkins_agent_port: 50000
+jenkins_host: "{{ deployment_mode == 'local' and 'localhost' or ansible_host }}"
+
+# Jenkins admin configuration
+jenkins_admin_user: "{{ lookup('env', 'JENKINS_ADMIN_USER') | default('admin') }}"
+jenkins_admin_password: "{{ lookup('env', 'JENKINS_ADMIN_PASSWORD') | default('admin123') }}"
+
+# Jenkins memory settings - optimized for dev containers
+jenkins_master_memory: "{{ deployment_mode == 'local' and '1g' or '4g' }}"
+jenkins_master_memory_min: "{{ deployment_mode == 'local' and '512m' or '2g' }}"
+
+# Docker configuration
+docker_host: "unix:///var/run/docker.sock"
+jenkins_network_subnet: "172.20.0.0/24"
+
+# Build and deployment options
+jenkins_force_rebuild: false
+jenkins_pull_images: false
+jenkins_wait_for_ready: true
+create_jenkins_user: true
+
+# SSL configuration (optional)
+jenkins_ssl_enabled: false
+jenkins_ssl_cert_path: ""
+
+# Plugin configuration
+jenkins_plugins:
+  - "ant:latest"
+  - "build-timeout:latest"
+  - "credentials-binding:latest"
+  - "timestamper:latest"
+  - "ws-cleanup:latest"
+  - "workflow-aggregator:latest"
+  - "pipeline-stage-view:latest"
+  - "git:latest"
+  - "github:latest"
+  - "github-branch-source:latest"
+  - "docker-plugin:latest"
+  - "docker-workflow:latest"
+  - "docker-commons:latest"
+  - "pipeline-maven:latest"
+  - "pipeline-utility-steps:latest"
+  - "maven-plugin:latest"
+  - "python:latest"
+  - "junit:latest"
+  - "htmlpublisher:latest"
+  - "matrix-auth:latest"
+  - "role-strategy:latest"
+  - "email-ext:latest"
+  - "configuration-as-code:latest"
+  - "envinject:latest"
+  - "copyartifact:latest"
+
+# Dynamic agent configuration
+jenkins_dynamic_agents:
+  maven:
+    image: "jenkins/inbound-agent:latest-maven"
+    labels: "maven java dynamic"
+    instance_cap: 5
+    idle_minutes: 10
+    environment:
+      JAVA_HOME: "/opt/java/openjdk-11"
+      MAVEN_OPTS: "-Xmx2g -Xms512m"
+      DOCKER_HOST: "unix:///var/run/docker.sock"
+    mounts:
+      - "type=bind,source=/var/run/docker.sock,destination=/var/run/docker.sock"
+      - "type=volume,source=maven-cache,destination=/home/jenkins/.m2"
+      - "type=volume,source=jenkins-workspace,destination=/home/jenkins/agent"
+  
+  python:
+    image: "jenkins/inbound-agent:latest-python"
+    labels: "python py dynamic"
+    instance_cap: 5
+    idle_minutes: 10
+    environment:
+      PYTHONPATH: "/usr/local/lib/python3.9/site-packages"
+      PIP_CACHE_DIR: "/home/jenkins/.cache/pip"
+      DOCKER_HOST: "unix:///var/run/docker.sock"
+    mounts:
+      - "type=bind,source=/var/run/docker.sock,destination=/var/run/docker.sock"
+      - "type=volume,source=pip-cache,destination=/home/jenkins/.cache/pip"
+      - "type=volume,source=jenkins-workspace,destination=/home/jenkins/agent"
+
+# Static DIND agent configuration
+jenkins_dind_agent:
+  name: "dind-agent"
+  labels: "dind docker-manager static privileged"
+  executors: 2
+  workspace: "/home/jenkins/agent"

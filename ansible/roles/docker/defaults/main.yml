@@ -1,0 +1,18 @@
+# Docker Role Default Variables
+
+# Installation method: repository, skip
+docker_install_method: repository
+
+# Install Docker Compose standalone
+docker_compose_install: true
+
+# Users to add to docker group
+docker_users: []
+
+# Docker daemon configuration
+docker_daemon_config:
+  log-driver: "json-file"
+  log-opts:
+    max-size: "10m"
+    max-file: "3"
+  storage-driver: "overlay2"

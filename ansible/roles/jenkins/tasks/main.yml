@@ -1,0 +1,149 @@
+# Jenkins Role - Main Tasks
+# Deploys Jenkins infrastructure using Docker Compose v2
+
+---
+- name: Include OS-specific variables
+  include_vars: "{{ ansible_os_family | lower }}.yml"
+  when: deployment_type == 'vm'
+
+- name: Create Jenkins directory structure
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ jenkins_user | default('jenkins') }}"
+    group: "{{ jenkins_group | default('jenkins') }}"
+    mode: '0755'
+  loop:
+    - "{{ jenkins_home_dir }}"
+    - "{{ jenkins_home_dir }}/jenkins"
+    - "{{ jenkins_home_dir }}/jenkins/master"
+    - "{{ jenkins_home_dir }}/jenkins/master/jcasc"
+    - "{{ jenkins_home_dir }}/jenkins/agents"
+    - "{{ jenkins_home_dir }}/certificates"
+    - "{{ jenkins_home_dir }}/backups"
+    - "{{ jenkins_home_dir }}/logs"
+
+- name: Create Jenkins user (VM deployment only)
+  user:
+    name: "{{ jenkins_user }}"
+    group: "{{ jenkins_group }}"
+    home: "{{ jenkins_home_dir }}"
+    shell: /bin/bash
+    system: yes
+  when: 
+    - deployment_type == 'vm'
+    - create_jenkins_user | default(true)
+  become: yes
+
+- name: Add Jenkins user to docker group (VM deployment)
+  user:
+    name: "{{ jenkins_user }}"
+    groups: docker
+    append: yes
+  when: deployment_type == 'vm'
+  become: yes
+
+- name: Generate Jenkins master Dockerfile
+  template:
+    src: Dockerfile.master.j2
+    dest: "{{ jenkins_home_dir }}/jenkins/master/Dockerfile"
+    owner: "{{ jenkins_user }}"
+    group: "{{ jenkins_group }}"
+    mode: '0644'
+
+- name: Generate Jenkins plugins list
+  template:
+    src: plugins.txt.j2
+    dest: "{{ jenkins_home_dir }}/jenkins/master/plugins.txt"
+    owner: "{{ jenkins_user }}"
+    group: "{{ jenkins_group }}"
+    mode: '0644'
+
+- name: Generate Jenkins Configuration as Code
+  template:
+    src: jenkins.yml.j2
+    dest: "{{ jenkins_home_dir }}/jenkins/master/jcasc/jenkins.yml"
+    owner: "{{ jenkins_user }}"
+    group: "{{ jenkins_group }}"
+    mode: '0644'
+
+- name: Generate DIND agent Dockerfile
+  template:
+    src: Dockerfile.dind.j2
+    dest: "{{ jenkins_home_dir }}/jenkins/agents/Dockerfile.dind"
+    owner: "{{ jenkins_user }}"
+    group: "{{ jenkins_group }}"
+    mode: '0644'
+
+- name: Generate Docker Compose configuration
+  template:
+    src: docker-compose.jenkins.yml.j2
+    dest: "{{ jenkins_home_dir }}/docker-compose.jenkins.yml"
+    owner: "{{ jenkins_user }}"
+    group: "{{ jenkins_group }}"
+    mode: '0644'
+
+- name: Generate environment file
+  template:
+    src: jenkins.env.j2
+    dest: "{{ jenkins_home_dir }}/.env"
+    owner: "{{ jenkins_user }}"
+    group: "{{ jenkins_group }}"
+    mode: '0600'
+
+- name: Copy SSL certificates (if provided)
+  copy:
+    src: "{{ item }}"
+    dest: "{{ jenkins_home_dir }}/certificates/"
+    owner: "{{ jenkins_user }}"
+    group: "{{ jenkins_group }}"
+    mode: '0644'
+  with_fileglob:
+    - "{{ jenkins_ssl_cert_path | default('files/certificates') }}/*.crt"
+  when: jenkins_ssl_cert_path is defined
+
+- name: Create Docker network for Jenkins
+  community.docker.docker_network:
+    name: jenkins-network
+    driver: bridge
+    ipam_config:
+      - subnet: "{{ jenkins_network_subnet }}"
+
+- name: Build and start Jenkins infrastructure
+  community.docker.docker_compose_v2:
+    project_src: "{{ jenkins_home_dir }}"
+    files:
+      - docker-compose.jenkins.yml
+    build: always
+    state: present
+    wait: true
+    wait_timeout: 300
+  environment:
+    DOCKER_HOST: "{{ docker_host | default('unix:///var/run/docker.sock') }}"
+
+- name: Wait for Jenkins to be ready
+  uri:
+    url: "http://{{ jenkins_host | default('localhost') }}:{{ jenkins_master_port }}/login"
+    method: GET
+    status_code: [200, 403]
+  register: jenkins_ready
+  until: jenkins_ready is succeeded
+  retries: 30
+  delay: 10
+  when: jenkins_wait_for_ready | default(true)
+
+- name: Display Jenkins access information
+  debug:
+    msg: |
+      🎉 Jenkins is ready!
+      
+      Access Information:
+      URL: http://{{ jenkins_host | default('localhost') }}:{{ jenkins_master_port }}
+      Username: {{ jenkins_admin_user }}
+      Password: {{ jenkins_admin_password }}
+      
+      Available Agents:
+      • dind docker-manager static privileged    - Static DIND agent
+      • maven java dynamic                       - Dynamic Maven agents  
+      • python py dynamic                        - Dynamic Python agents
+  when: jenkins_wait_for_ready | default(true)

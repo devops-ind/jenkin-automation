@@ -1,0 +1,22 @@
+# Docker installation variables for Debian/Ubuntu
+
+docker_prerequisites:
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - gnupg
+  - lsb-release
+  - software-properties-common
+
+docker_gpg_key_url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
+
+docker_repo: "deb [arch={{ ansible_architecture }} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable"
+
+docker_packages:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
+
+docker_compose_url: "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-{{ ansible_system }}-{{ ansible_architecture }}"

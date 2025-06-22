@@ -1,0 +1,128 @@
+# Main site playbook for Jenkins infrastructure deployment
+# Supports both local development and remote VM deployment
+
+---
+- name: Pre-flight Validation
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+  vars:
+    deployment_mode: "{{ lookup('env', 'DEPLOYMENT_MODE') | default('local') }}"
+  tasks:
+    - name: Display deployment information
+      debug:
+        msg: |
+          🚀 Deploying Jenkins Infrastructure
+          Mode: {{ deployment_mode }}
+          Target: {{ deployment_mode == 'local' and 'Dev Container' or 'Remote VM' }}
+    
+    - name: Validate deployment mode
+      fail:
+        msg: "DEPLOYMENT_MODE must be either 'local' or 'remote'"
+      when: deployment_mode not in ['local', 'remote']
+    
+    - name: Ensure Docker is running (local mode)
+      community.docker.docker_host_info:
+      register: docker_info
+      when: deployment_mode == 'local'
+
+    - name: Display Docker info
+      debug:
+        msg: "Docker is running with {{ docker_info.containers | default(0) }} containers"
+      when: 
+        - deployment_mode == 'local'
+        - docker_info is succeeded
+
+    - name: Create Docker network for Jenkins (local mode)
+      community.docker.docker_network:
+        name: jenkins-network
+        driver: bridge
+        ipam_config:
+          - subnet: "172.20.0.0/24"
+      when: deployment_mode == 'local'
+
+- name: Prepare Remote Docker Host
+  hosts: docker_hosts
+  gather_facts: yes
+  become: yes
+  vars:
+    deployment_mode: "{{ lookup('env', 'DEPLOYMENT_MODE') | default('local') }}"
+  tasks:
+    - name: Update package cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: 
+        - deployment_mode == 'remote'
+        - ansible_os_family == "Debian"
+    
+    - name: Install system dependencies
+      package:
+        name:
+          - curl
+          - wget
+          - gnupg
+          - software-properties-common
+          - apt-transport-https
+          - ca-certificates
+          - python3-pip
+        state: present
+      when: deployment_mode == 'remote'
+    
+    - name: Install Docker
+      include_role:
+        name: docker
+      vars:
+        docker_install_method: repository
+        docker_compose_install: true
+        docker_users: 
+          - "{{ ansible_user }}"
+      when: deployment_mode == 'remote'
+    
+    - name: Install Docker Python library
+      pip:
+        name: 
+          - docker
+          - docker-compose
+        state: present
+      when: deployment_mode == 'remote'
+    
+    - name: Configure firewall
+      ufw:
+        rule: allow
+        port: "{{ item }}"
+      loop:
+        - "22"
+        - "8080"
+        - "50000"
+      when: deployment_mode == 'remote'
+
+- name: Deploy Jenkins Infrastructure
+  hosts: "{{ deployment_mode == 'local' and 'localhost' or 'docker_hosts' }}"
+  gather_facts: yes
+  become: "{{ deployment_mode == 'remote' }}"
+  vars:
+    deployment_mode: "{{ lookup('env', 'DEPLOYMENT_MODE') | default('local') }}"
+  roles:
+    - role: jenkins
+
+- name: Post-deployment Verification
+  hosts: localhost
+  connection: local
+  vars:
+    deployment_mode: "{{ lookup('env', 'DEPLOYMENT_MODE') | default('local') }}"
+  tasks:
+    - name: Display completion message
+      debug:
+        msg: |
+          🎉 Jenkins Infrastructure Deployment Completed!
+          
+          📋 Access Information:
+          URL: {{ deployment_mode == 'local' and 'http://localhost:8080' or 'http://' + hostvars[groups['docker_hosts'][0]]['ansible_host'] + ':8080' }}
+          Username: {{ lookup('env', 'JENKINS_ADMIN_USER') | default('admin') }}
+          Password: {{ lookup('env', 'JENKINS_ADMIN_PASSWORD') | default('admin123') }}
+          
+          🔧 Available Agent Labels:
+          • dind docker-manager static privileged
+          • maven java dynamic
+          • python py dynamic
