@@ -81,10 +81,7 @@ RUN mkdir -p /home/ansible/.ssh \
     && chown -R ansible:ansible /home/ansible/.ssh \
     && chmod 700 /home/ansible/.ssh
 
-# Copy your certificates into the container (optional - commented out for flexibility)
-# This handles corporate SSL interception (Zscaler, DPI)
-# COPY docker/zscaler.crt /usr/local/share/ca-certificates/zscaler.crt 2>/dev/null || true
-# COPY docker/dpi.crt /usr/local/share/ca-certificates/dpi.crt 2>/dev/null || true
+
 
 # Update the certificate store to include your corporate certificates
 RUN update-ca-certificates
