@@ -19,9 +19,9 @@ jenkins_host: "{{ deployment_mode == 'local' and 'localhost' or ansible_host }}"
 jenkins_admin_user: "{{ lookup('env', 'JENKINS_ADMIN_USER') | default('admin') }}"
 jenkins_admin_password: "{{ lookup('env', 'JENKINS_ADMIN_PASSWORD') | default('admin123') }}"
 
-# Jenkins memory settings - optimized for dev containers
-jenkins_master_memory: "{{ deployment_mode == 'local' and '1g' or '4g' }}"
-jenkins_master_memory_min: "{{ deployment_mode == 'local' and '512m' or '2g' }}"
+# Jenkins memory settings
+jenkins_master_memory: "{{ deployment_mode == 'local' and '2g' or '4g' }}"
+jenkins_master_memory_min: "{{ deployment_mode == 'local' and '1g' or '2g' }}"
 
 # Docker configuration
 docker_host: "unix:///var/run/docker.sock"

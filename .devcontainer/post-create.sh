@@ -68,18 +68,16 @@ if ! docker --version; then
     exit 1
 fi
 
-# Fix Docker socket permissions if needed (your Dockerfile should handle this, but just in case)
+# Fix Docker socket permissions
+echo "🔧 Fixing Docker socket permissions..."
+sudo chown ansible:docker /var/run/docker.sock 2>/dev/null || true
+sudo chmod 666 /var/run/docker.sock 2>/dev/null || true
+
+# Test Docker daemon connectivity
 if ! docker info >/dev/null 2>&1; then
-    echo "🔧 Fixing Docker socket permissions..."
-    sudo chown ansible:docker /var/run/docker.sock 2>/dev/null || true
-    sudo chmod 666 /var/run/docker.sock 2>/dev/null || true
-    
-    # Test again after permission fix
-    if ! docker info >/dev/null 2>&1; then
-        echo "⚠️  Docker daemon not accessible, attempting to start..."
-        sudo service docker start 2>/dev/null || true
-        sleep 5
-    fi
+    echo "⚠️  Docker daemon not accessible, attempting to fix..."
+    sudo service docker start 2>/dev/null || true
+    sleep 5
 fi
 
 docker --version
@@ -101,7 +99,7 @@ if [ ! -f "/home/ansible/.gitconfig" ]; then
     echo "   git config --global user.email 'your.email@example.com'"
 fi
 
-# Auto-deploy Jenkins in local mode with better error handling
+# Auto-deploy Jenkins in local mode
 echo ""
 echo "🚀 Auto-deploying Jenkins infrastructure in local mode..."
 echo ""
@@ -111,11 +109,9 @@ export DEPLOYMENT_MODE=local
 export JENKINS_ADMIN_USER=admin
 export JENKINS_ADMIN_PASSWORD=admin123
 
-# Run Ansible playbook to deploy Jenkins with timeout
+# Run Ansible playbook to deploy Jenkins
 cd /workspace/ansible
-timeout 600 ansible-playbook site.yml -e deployment_mode=local 2>&1 | tee /tmp/ansible-deploy.log
-
-if [ ${PIPESTATUS[0]} -eq 0 ]; then
+if ansible-playbook site.yml -e deployment_mode=local; then
     echo ""
     echo "🎉 Jenkins deployment completed successfully!"
     echo ""
@@ -123,16 +119,9 @@ if [ ${PIPESTATUS[0]} -eq 0 ]; then
     echo "👤 Username: admin"
     echo "🔐 Password: admin123"
     echo ""
-elif [ ${PIPESTATUS[0]} -eq 124 ]; then
-    echo ""
-    echo "⏰ Jenkins deployment timed out (10 minutes)"
-    echo "   This might be due to slow Docker image pulls or resource constraints"
-    echo "   You can manually retry with: ansible-playbook site.yml -e deployment_mode=local"
-    echo ""
 else
     echo ""
     echo "⚠️  Jenkins deployment encountered an issue, but dev environment is ready"
-    echo "   Check logs: cat /tmp/ansible-deploy.log"
     echo "   You can manually deploy Jenkins with: ansible-playbook site.yml -e deployment_mode=local"
     echo ""
 fi

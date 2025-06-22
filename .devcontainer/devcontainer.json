@@ -71,19 +71,17 @@
   ],
 
   // Commands to run after the container is created
-  // Temporarily disabled auto-deployment to prevent container crashes
-  "postCreateCommand": "bash .devcontainer/post-create-lite.sh",
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
   
   // Run as non-root user for security
   "remoteUser": "ansible",
   
-  // Additional container options for ARM64 Macs
-  "runArgs": [
-    "--init",
-    "--memory=2g",
-    "--cpus=1.5",
-    "--platform=linux/arm64"
-  ],
+  // Additional container options to handle permissions and resources better
+  // "runArgs": [
+  //   "--init",
+  //   "--memory=4g",
+  //   "--cpus=2"
+  // ],
   
   // Update the remote user's UID/GID to match the local user
   "updateRemoteUserUID": true,
