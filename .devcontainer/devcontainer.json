@@ -8,8 +8,6 @@
       "USER_GID": "1001"
     }
   },
-  
-  // Features provide pre-built development tools
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
       "version": "latest",
@@ -22,14 +20,10 @@
       "upgradePackages": "true"
     }
   },
-
-  // Mount your project and Docker socket for container management
   "mounts": [
     "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
     "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
   ],
-
-  // Environment variables that will be available in your dev container
   "containerEnv": {
     "ANSIBLE_HOST_KEY_CHECKING": "False",
     "ANSIBLE_STDOUT_CALLBACK": "default",
@@ -37,62 +31,23 @@
     "PYTHONPATH": "/workspace/ansible",
     "DOCKER_HOST": "unix:///var/run/docker.sock"
   },
-
-  // VS Code extensions that enhance your development experience
   "customizations": {
     "vscode": {
       "extensions": [
         "redhat.ansible",
-        "ms-python.python",
+        "ms-python.python", 
         "ms-vscode.docker",
         "ms-vscode.yaml",
         "ms-vscode.json",
         "wholroyd.jinja",
         "timonwong.shellcheck"
-      ],
-      "settings": {
-        "ansible.python.interpreterPath": "/usr/bin/python3",
-        "ansible.executionEnvironment.enabled": false,
-        "files.associations": {
-          "*.j2": "jinja"
-        }
-      }
+      ]
     }
   },
-
-  // Port forwarding for your services
-  "forwardPorts": [
-    8080,  // Jenkins master
-    8081,  // Jenkins agent
-    80,    // HAProxy
-    443,   // HAProxy SSL
-    9000,  // Additional services
-    22     // SSH for debugging
-  ],
-
-  // Commands to run after the container is created
+  "forwardPorts": [8080, 80, 443, 8404, 8405],
   "postCreateCommand": "bash .devcontainer/post-create.sh",
-  
-  // Run as non-root user for security
   "remoteUser": "ansible",
-  
-  // Additional container options to handle permissions and resources better
-  // "runArgs": [
-  //   "--init",
-  //   "--memory=4g",
-  //   "--cpus=2"
-  // ],
-  
-  // Update the remote user's UID/GID to match the local user
+  "runArgs": ["--init"],
   "updateRemoteUserUID": true,
-  
-  // Override the container command to ensure Docker socket permissions
-  "overrideCommand": false,
-  
-  // Privileged mode for Docker access
-  "privileged": false,
-  
-  // Additional initialization
-  "initializeCommand": "echo 'Setting up dev container...'",
   "onCreateCommand": "sudo chown ansible:docker /var/run/docker.sock 2>/dev/null || true"
 }

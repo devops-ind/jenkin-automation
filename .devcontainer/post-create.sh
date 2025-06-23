@@ -1,16 +1,11 @@
 #!/bin/bash
-
-# This script runs after your dev container is created
-# It sets up your development environment and deploys Jenkins automatically
-
-set -e  # Exit on any error
+set -e
 
 echo "🚀 Setting up your Ansible + Jenkins development environment..."
 
-# Navigate to the workspace
 cd /workspace
 
-# Install Ansible Galaxy requirements if they exist
+# Install Ansible collections
 if [ -f "ansible/requirements.yml" ]; then
     echo "📦 Installing Ansible Galaxy requirements..."
     ansible-galaxy install -r ansible/requirements.yml --force
@@ -22,20 +17,18 @@ else
     echo "✅ Essential collections installed"
 fi
 
-# Set up proper ownership of workspace files (excluding .git to avoid permission issues)
+# Fix file permissions (excluding .git)
 echo "🔧 Setting up file permissions..."
-# Create a list of directories to fix permissions for, excluding .git
 sudo find /workspace -maxdepth 1 -type d -not -name ".git" -exec chown -R ansible:ansible {} \; 2>/dev/null || true
-# Fix individual files in the root workspace directory
 sudo find /workspace -maxdepth 1 -type f -exec chown ansible:ansible {} \; 2>/dev/null || true
 echo "✅ File permissions configured"
 
-# Create necessary directories if they don't exist
+# Create directories
 mkdir -p /workspace/ansible/logs
 mkdir -p /workspace/jenkins-deploy
 mkdir -p /home/ansible/.ansible/tmp
 
-# Set up Ansible configuration
+# Ansible configuration
 if [ ! -f "/home/ansible/.ansible.cfg" ]; then
     echo "⚙️  Creating Ansible user configuration..."
     cat > /home/ansible/.ansible.cfg << EOF
@@ -43,11 +36,10 @@ if [ ! -f "/home/ansible/.ansible.cfg" ]; then
 inventory = /workspace/ansible/inventory
 roles_path = /workspace/ansible/roles
 host_key_checking = False
-stdout_callback = yaml
+stdout_callback = default
 callbacks_enabled = profile_tasks, timer
 log_path = /workspace/ansible/logs/ansible.log
-remote_tmp = /home/ansible/.ansible/tmp
-local_tmp = /home/ansible/.ansible/tmp
+deprecation_warnings = False
 
 [ssh_connection]
 ssh_args = -o ControlMaster=auto -o ControlPersist=60s -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no
@@ -56,40 +48,40 @@ EOF
     echo "✅ Ansible configuration created"
 fi
 
-# Test Ansible installation
-echo "🔍 Testing Ansible installation..."
-ansible --version
-ansible-galaxy --version
-
-# Test Docker connectivity and fix permissions if needed
+# Test Docker connectivity with permission fixes
 echo "🐳 Testing Docker connectivity..."
 if ! docker --version; then
     echo "❌ Docker CLI not available"
     exit 1
 fi
 
-# Fix Docker socket permissions
-echo "🔧 Fixing Docker socket permissions..."
-sudo chown ansible:docker /var/run/docker.sock 2>/dev/null || true
-sudo chmod 666 /var/run/docker.sock 2>/dev/null || true
-
-# Test Docker daemon connectivity
 if ! docker info >/dev/null 2>&1; then
-    echo "⚠️  Docker daemon not accessible, attempting to fix..."
-    sudo service docker start 2>/dev/null || true
-    sleep 5
+    echo "🔧 Fixing Docker socket permissions..."
+    sudo chown ansible:docker /var/run/docker.sock 2>/dev/null || true
+    sudo chmod 666 /var/run/docker.sock 2>/dev/null || true
+    
+    if ! docker info >/dev/null 2>&1; then
+        echo "⚠️  Docker daemon not accessible, attempting to start..."
+        sudo service docker start 2>/dev/null || true
+        sleep 5
+    fi
 fi
 
 docker --version
 docker compose version
 
-# Create a simple inventory test
+# Test Ansible
+echo "🔍 Testing Ansible installation..."
+ansible --version
+ansible-galaxy --version
+
+# Test inventory
 if [ -f "/workspace/ansible/inventory/hosts.yml" ]; then
     echo "📋 Testing inventory configuration..."
     ansible-inventory --list > /dev/null && echo "✅ Inventory configuration is valid"
 fi
 
-# Set up Git configuration if not already configured
+# Git configuration
 if [ ! -f "/home/ansible/.gitconfig" ]; then
     echo "📝 Setting up basic Git configuration..."
     git config --global init.defaultBranch main
@@ -99,44 +91,41 @@ if [ ! -f "/home/ansible/.gitconfig" ]; then
     echo "   git config --global user.email 'your.email@example.com'"
 fi
 
-# Auto-deploy Jenkins in local mode
+# Auto-deploy Jenkins
 echo ""
 echo "🚀 Auto-deploying Jenkins infrastructure in local mode..."
 echo ""
 
-# Set environment for local deployment
 export DEPLOYMENT_MODE=local
 export JENKINS_ADMIN_USER=admin
 export JENKINS_ADMIN_PASSWORD=admin123
+export JENKINS_DOMAIN=jenkins.dev.local
 
-# Run Ansible playbook to deploy Jenkins
 cd /workspace/ansible
-if ansible-playbook site.yml -e deployment_mode=local; then
-    echo ""
-    echo "🎉 Jenkins deployment completed successfully!"
-    echo ""
-    echo "🌐 Jenkins is available at: http://localhost:8080"
-    echo "👤 Username: admin"
-    echo "🔐 Password: admin123"
-    echo ""
-else
-    echo ""
-    echo "⚠️  Jenkins deployment encountered an issue, but dev environment is ready"
-    echo "   You can manually deploy Jenkins with: ansible-playbook site.yml -e deployment_mode=local"
-    echo ""
-fi
+# if ansible-playbook site.yml -e deployment_mode=local; then
+#     echo ""
+#     echo "🎉 Jenkins deployment completed successfully!"
+#     echo ""
+#     echo "🌐 Jenkins is available at: https://jenkins.dev.local"
+#     echo "👤 Username: admin"
+#     echo "🔐 Password: admin123"
+#     echo "📊 HAProxy Stats: https://jenkins.dev.local:8404/stats"
+#     echo ""
+# else
+#     echo ""
+#     echo "⚠️  Jenkins deployment encountered an issue, but dev environment is ready"
+#     echo "   You can manually deploy Jenkins with: ansible-playbook site.yml -e deployment_mode=local"
+#     echo ""
+# fi
 
-echo ""
 echo "🎉 Development environment setup complete!"
 echo ""
 echo "💡 Quick start commands:"
 echo "   • Deploy Jenkins locally:     ansible-playbook site.yml -e deployment_mode=local"
 echo "   • Deploy to remote VM:        DEPLOYMENT_MODE=remote ansible-playbook site.yml"
 echo "   • Check Jenkins status:       docker ps"
-echo "   • View Jenkins logs:          docker logs jenkins-master"
-echo "   • Access Jenkins:             http://localhost:8080"
+echo "   • Access Jenkins:             https://jenkins.dev.local"
 echo ""
 echo "📚 Your unified Ansible + Jenkins environment is ready!"
 
-# Make the script file executable
 chmod +x /workspace/.devcontainer/post-create.sh
