@@ -1,9 +1,6 @@
 # Custom Jenkins Master Image
 # Based on official Jenkins LTS with pre-installed plugins and JCasC configuration
 
-FROM jenkins/jenkins:2.401.3-lts# Custom Jenkins Master Image
-# Based on official Jenkins LTS with pre-installed plugins and configuration
-
 FROM jenkins/jenkins:2.401.3-lts
 
 # Switch to root user to install additional packages
