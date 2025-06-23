@@ -93,7 +93,11 @@
         port: "{{ item }}"
       loop:
         - "22"
+        - "80"
+        - "443"
         - "8080"
+        - "8404"
+        - "8405"
         - "50000"
       when: deployment_mode == 'remote'
 
@@ -118,7 +122,7 @@
           🎉 Jenkins Infrastructure Deployment Completed!
           
           📋 Access Information:
-          URL: {{ deployment_mode == 'local' and 'http://localhost:8080' or 'http://' + hostvars[groups['docker_hosts'][0]]['ansible_host'] + ':8080' }}
+          URL: {{ deployment_mode == 'local' and 'https://jenkins.dev.local' or 'https://' + lookup('env', 'JENKINS_DOMAIN') }}
           Username: {{ lookup('env', 'JENKINS_ADMIN_USER') | default('admin') }}
           Password: {{ lookup('env', 'JENKINS_ADMIN_PASSWORD') | default('admin123') }}
           
@@ -126,3 +130,6 @@
           • dind docker-manager static privileged
           • maven java dynamic
           • python py dynamic
+          
+          📊 HAProxy Stats: {{ deployment_mode == 'local' and 'https://jenkins.dev.local:8404/stats' or 'https://' + lookup('env', 'JENKINS_DOMAIN') + ':8404/stats' }}
+          🏥 Health Check: {{ deployment_mode == 'local' and 'https://jenkins.dev.local:8405/health' or 'https://' + lookup('env', 'JENKINS_DOMAIN') + ':8405/health' }}

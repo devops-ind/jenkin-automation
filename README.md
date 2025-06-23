@@ -148,34 +148,46 @@ pipeline {
 
 ## 📁 Project Structure
 
-```
+jenkins-automation/
 ├── .devcontainer/              # VS Code dev container configuration
-│   ├── devcontainer.json       # Container setup and features
-│   ├── Dockerfile              # Development environment image
-│   └── post-create.sh          # Auto-setup script
-├── ansible/                    # Ansible infrastructure code
-│   ├── site.yml                # Main deployment playbook
-│   ├── ansible.cfg             # Ansible configuration
-│   ├── requirements.yml        # Ansible Galaxy collections (community.docker v3.4+)
-│   ├── inventory/              # Dynamic inventory configuration
-│   │   └── hosts.yml           # Local and remote host definitions
-│   ├── roles/                  # Ansible roles
-│   │   ├── docker/             # Docker installation role
-│   │   └── jenkins/            # Jenkins deployment role
-│   │       ├── tasks/main.yml  # Jenkins deployment tasks (uses docker_compose_v2)
-│   │       ├── defaults/main.yml # Default variables
-│   │       └── templates/      # Jinja2 templates
-│   │           ├── docker-compose.jenkins.yml.j2
-│   │           ├── jenkins.yml.j2 # JCasC configuration
-│   │           ├── Dockerfile.master.j2
-│   │           └── Dockerfile.dind.j2
-├── scripts/                    # Deployment and management scripts
-│   └── deploy.sh               # Unified deployment script
-├── examples/                   # Example pipelines and configurations
-│   └── sample-pipeline.groovy  # Demonstrates all agent types
-├── Makefile                    # Simple deployment commands
-└── README.md                   # This file
-```
+│   ├── devcontainer.json       # UPDATED: UID 1001, Docker socket fixes
+│   ├── Dockerfile              # UPDATED: Your optimized Ubuntu 24.04 + additions
+│   └── post-create.sh          # UPDATED: Platform-specific Docker permissions
+├── ansible/                    # Ansible infrastructure automation
+│   ├── site.yml                # COMPLETELY REWRITTEN: HAProxy integration
+│   ├── ansible.cfg             # UPDATED: Deprecation warnings disabled
+│   ├── requirements.yml        # NEW: Docker Compose v2 collections
+│   ├── inventory/              # Environment definitions
+│   │   └── hosts.yml           # UPDATED: Domain and SSL variables
+│   └── roles/                  # Ansible roles
+│       ├── docker/             # NEW: Docker installation role
+│       │   ├── tasks/main.yml  # NEW: RHEL-compatible Docker installation
+│       │   ├── defaults/main.yml # NEW: Docker configuration defaults
+│       │   └── vars/
+│       │       └── debian.yml  # NEW: Debian/Ubuntu variables
+│       └── jenkins/            # MAJOR UPDATE: Complete infrastructure role
+│           ├── tasks/main.yml  # MAJOR UPDATE: HAProxy + SSL management
+│           ├── defaults/main.yml # MAJOR UPDATE: Domain/SSL/HAProxy config
+│           └── templates/      # Configuration templates
+│               ├── docker-compose.jenkins.yml.j2 # UPDATED: HAProxy service
+│               ├── jenkins.yml.j2 # Jenkins Configuration as Code
+│               ├── haproxy.cfg.j2 # NEW: HAProxy with SSL termination
+│               ├── Dockerfile.master.j2 # Jenkins master container
+│               ├── Dockerfile.dind.j2 # DIND agent container
+│               ├── Dockerfile.haproxy.j2 # NEW: HAProxy container
+│               ├── plugins.txt.j2 # Jenkins plugins list
+│               └── jenkins.env.j2 # Environment variables
+├── environments/               # NEW: Platform-specific configurations
+│   ├── dev-local.env          # NEW: Windows WSL/macOS/Linux development
+│   └── prod-rhel.env          # NEW: RHEL production server
+├── scripts/                   # Deployment and management
+│   └── deploy.sh              # MAJOR UPDATE: Cross-platform + SSL support
+├── examples/                  # Sample configurations
+│   └── sample-pipeline.groovy # Pipeline examples for all agent types
+├── Makefile                   # UPDATED: SSL setup, platform detection
+├── README.md                  # COMPLETELY REWRITTEN: Enterprise documentation
+└── IMPLEMENTATION_GUIDE.md    # NEW: This complete implementation guide
+
 
 ## ⚙️ Configuration
 

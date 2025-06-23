@@ -1,6 +1,115 @@
 #!/bin/bash
 
 # Unified Jenkins Infrastructure Deployment Script
+# Cross-platform support: Windows WSL, macOS, Linux local + RHEL remote
+
+set -e
+
+# Script configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+ANSIBLE_DIR="$PROJECT_ROOT/ansible"
+
+# Platform detection
+detect_platform() {
+    if [[ -f /proc/version ]] && grep -q Microsoft /proc/version; then
+        echo "wsl"
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        echo "macos"
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        if [[ -f /etc/redhat-release ]]; then
+            echo "rhel"
+        else
+            echo "linux"
+        fi
+    else
+        echo "unknown"
+    fi
+}
+
+# Detect RHEL version for remote deployments
+detect_rhel_version() {
+    if [ -n "$DOCKER_HOST_IP" ]; then
+        ssh -o ConnectTimeout=5 "${ANSIBLE_USER:-ansible}@$DOCKER_HOST_IP" \
+            "cat /etc/redhat-release 2>/dev/null || echo 'Unknown'" 2>/dev/null || echo "Unknown"
+    fi
+}
+
+PLATFORM=$(detect_platform)
+
+# Default values
+DEPLOYMENT_MODE="${DEPLOYMENT_MODE:-local}"
+VERBOSE=""
+DRY_RUN=""
+TAGS=""
+FORCE_REBUILD=""
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+NC='\033[0m'
+
+# Helper functions
+log_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+log_platform() {
+    echo -e "${PURPLE}[PLATFORM]${NC} $1"
+}
+
+show_help() {
+    cat << EOF
+Unified Jenkins Infrastructure Deployment Script
+Cross-platform support: Windows WSL, macOS, Linux + RHEL remote
+
+USAGE:
+    $0 [OPTIONS] [COMMAND]
+
+COMMANDS:
+    deploy          Deploy Jenkins infrastructure (default)
+    destroy         Remove all deployed services
+    status          Show status of deployed services
+    logs            Show logs from services
+    validate        Validate configuration without deploying
+    rebuild         Force rebuild Docker images and redeploy
+    ssl-setup       Set up SSL certificates for domain
+
+OPTIONS:
+    -m, --mode MODE     Deployment mode: local or remote (default: local)
+    -v, --verbose       Enable verbose Ansible output
+    -n, --dry-run       Show what would be done without executing
+    -t, --tags TAGS     Run only tasks with specific tags
+    -f, --force         Force rebuild Docker images
+    -h, --help          Show this help message
+
+ENVIRONMENT VARIABLES:
+    DEPLOYMENT_MODE     Set deployment mode (local/remote)
+    JENKINS_DOMAIN      Corporate domain (e.g., jenkins.company.com)
+    BASE_DOMAIN         Base corporate domain (e.g., company.com)
+    DOCKER_HOST_IP      IP address of remote RHEL server
+    ANSIBLE_USER        SSH user for remote connections
+    SSH_KEY_PATH        Path to SSH private key
+    JENKINS_ADMIN_PASSWORD      Jenkins admin password
+    HAPROXY_STATS_PASSWORD      HAProxy stats password
+    JENKINS_SSL_CERT_#!/bin/bash
+
+# Unified Jenkins Infrastructure Deployment Script
 # Deploys Jenkins via Ansible to both local dev containers and remote VMs
 
 set -e

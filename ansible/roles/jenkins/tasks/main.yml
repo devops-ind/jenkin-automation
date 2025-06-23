@@ -91,16 +91,69 @@
     group: "{{ jenkins_group }}"
     mode: '0600'
 
-- name: Copy SSL certificates (if provided)
-  copy:
-    src: "{{ item }}"
-    dest: "{{ jenkins_home_dir }}/certificates/"
+- name: Generate HAProxy configuration
+  template:
+    src: haproxy.cfg.j2
+    dest: "{{ jenkins_home_dir }}/jenkins/haproxy.cfg"
     owner: "{{ jenkins_user }}"
     group: "{{ jenkins_group }}"
     mode: '0644'
-  with_fileglob:
-    - "{{ jenkins_ssl_cert_path | default('files/certificates') }}/*.crt"
-  when: jenkins_ssl_cert_path is defined
+
+- name: Generate HAProxy Dockerfile
+  template:
+    src: Dockerfile.haproxy.j2
+    dest: "{{ jenkins_home_dir }}/jenkins/Dockerfile.haproxy"
+    owner: "{{ jenkins_user }}"
+    group: "{{ jenkins_group }}"
+    mode: '0644'
+
+- name: Create SSL certificate directory
+  file:
+    path: "{{ jenkins_home_dir }}/certificates"
+    state: directory
+    owner: "{{ jenkins_user }}"
+    group: "{{ jenkins_group }}"
+    mode: '0755'
+
+- name: Generate self-signed certificate for development
+  command: >
+    openssl req -x509 -nodes -days 365 -newkey rsa:2048
+    -keyout "{{ jenkins_home_dir }}/certificates/{{ jenkins_domain }}.key"
+    -out "{{ jenkins_home_dir }}/certificates/{{ jenkins_domain }}.crt"
+    -subj "/C=US/ST=State/L=City/O=Organization/CN={{ jenkins_domain }}"
+  args:
+    creates: "{{ jenkins_home_dir }}/certificates/{{ jenkins_domain }}.crt"
+  when: 
+    - jenkins_ssl_enabled | default(false)
+    - deployment_mode == 'local' or jenkins_generate_self_signed | default(false)
+
+- name: Combine certificate and key for HAProxy (development)
+  shell: >
+    cat "{{ jenkins_home_dir }}/certificates/{{ jenkins_domain }}.crt" 
+    "{{ jenkins_home_dir }}/certificates/{{ jenkins_domain }}.key" 
+    > "{{ jenkins_home_dir }}/certificates/{{ jenkins_domain }}.pem"
+  args:
+    creates: "{{ jenkins_home_dir }}/certificates/{{ jenkins_domain }}.pem"
+  when: 
+    - jenkins_ssl_enabled | default(false)
+    - deployment_mode == 'local' or jenkins_generate_self_signed | default(false)
+
+- name: Copy corporate SSL certificates (production)
+  copy:
+    src: "{{ jenkins_ssl_cert_source_path }}/{{ item }}"
+    dest: "{{ jenkins_home_dir }}/certificates/{{ item }}"
+    owner: "{{ jenkins_user }}"
+    group: "{{ jenkins_group }}"
+    mode: '0644'
+  loop:
+    - "{{ jenkins_domain }}.pem"
+    - "{{ jenkins_domain }}.crt"
+    - "{{ jenkins_domain }}.key"
+  when: 
+    - jenkins_ssl_enabled | default(false)
+    - deployment_mode == 'remote'
+    - jenkins_ssl_cert_source_path is defined
+  ignore_errors: yes
 
 - name: Create Docker network for Jenkins
   community.docker.docker_network:

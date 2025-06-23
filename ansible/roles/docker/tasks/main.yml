@@ -70,15 +70,8 @@
   register: docker_version
   changed_when: false
 
-- name: Verify Docker Compose installation
-  command: docker-compose --version
-  register: docker_compose_version
-  changed_when: false
-  when: docker_compose_install | default(false)
-
 - name: Display Docker version information
   debug:
     msg: |
       Docker installation completed:
       {{ docker_version.stdout }}
-      {% if docker_compose_install | default(false) %}{{ docker_compose_version.stdout }}{% endif %}

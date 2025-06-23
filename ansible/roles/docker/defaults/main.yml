@@ -11,6 +11,9 @@ docker_users: []
 
 # Docker daemon configuration
 docker_daemon_config:
+  ipv6: true
+  iptables: true
+  ip-forward: true
   log-driver: "json-file"
   log-opts:
     max-size: "10m"

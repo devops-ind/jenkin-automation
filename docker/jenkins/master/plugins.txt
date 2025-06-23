@@ -1,0 +1,47 @@
+# Essential Jenkins Plugins for Docker-based CI/CD with JCasC
+
+# Core Jenkins Plugins
+ant:latest
+build-timeout:latest
+credentials-binding:latest
+timestamper:latest
+ws-cleanup:latest
+workflow-aggregator:latest
+pipeline-stage-view:latest
+
+# SCM and Version Control
+git:latest
+github:latest
+github-branch-source:latest
+
+# Docker Integration - Core requirement
+docker-plugin:latest
+docker-workflow:latest
+docker-commons:latest
+
+# Pipeline and Workflow
+pipeline-maven:latest
+pipeline-utility-steps:latest
+pipeline-stage-view:latest
+
+# Build Tools (only what we need)
+maven-plugin:latest
+python:latest
+
+# Testing and Quality
+junit:latest
+htmlpublisher:latest
+
+# Security and Authentication
+matrix-auth:latest
+role-strategy:latest
+
+# Notification
+email-ext:latest
+
+# Essential: Configuration as Code
+configuration-as-code:latest
+
+# Utility Plugins
+envinject:latest
+copyartifact:latest

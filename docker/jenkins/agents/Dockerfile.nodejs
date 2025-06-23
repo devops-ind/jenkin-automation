@@ -1,0 +1,146 @@
+# Node.js/JavaScript Jenkins Agent
+# Optimized for Node.js builds with multiple Node versions and frontend tools
+
+FROM jenkins/inbound-agent:latest
+
+# Switch to root to install packages
+USER root
+
+# Install system packages
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    wget \
+    curl \
+    git \
+    unzip \
+    zip \
+    # For node-gyp and native modules
+    python3 \
+    make \
+    g++ \
+    # Docker for containerized builds
+    docker.io \
+    # Additional tools
+    jq \
+    rsync \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node Version Manager (NVM) for multiple Node.js versions
+ENV NVM_DIR=/home/jenkins/.nvm
+RUN mkdir -p $NVM_DIR
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+
+# Source NVM and install multiple Node.js versions
+RUN bash -c "source $NVM_DIR/nvm.sh && \
+    nvm install 16.20.2 && \
+    nvm install 18.17.1 && \
+    nvm install 20.5.1 && \
+    nvm alias default 18.17.1 && \
+    nvm use default"
+
+# Set default Node.js version in PATH
+ENV NODE_VERSION=18.17.1
+ENV PATH=$NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
+
+# Install global npm packages commonly used in CI/CD
+RUN npm install -g \
+    # Package managers
+    yarn \
+    pnpm \
+    # Build tools
+    @angular/cli \
+    @vue/cli \
+    create-react-app \
+    # Testing frameworks
+    jest \
+    mocha \
+    cypress \
+    # Linting and formatting
+    eslint \
+    prettier \
+    tslint \
+    # Build and bundling tools
+    webpack \
+    webpack-cli \
+    parcel \
+    vite \
+    # Deployment tools
+    netlify-cli \
+    vercel \
+    # Documentation
+    @storybook/cli \
+    # Performance testing
+    lighthouse \
+    # TypeScript
+    typescript \
+    ts-node \
+    # Development servers
+    http-server \
+    live-server \
+    # Package auditing
+    npm-audit-html \
+    # Utility tools
+    rimraf \
+    cross-env \
+    concurrently
+
+# Install Chrome for end-to-end testing
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
+    && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list \
+    && apt-get update \
+    && apt-get install -y google-chrome-stable \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Firefox for cross-browser testing
+RUN apt-get update && apt-get install -y firefox-esr && rm -rf /var/lib/apt/lists/*
+
+# Add jenkins user to docker group
+RUN usermod -a -G docker jenkins
+
+# Create directories and set permissions
+RUN mkdir -p /home/jenkins/.npm /home/jenkins/.yarn /home/jenkins/.pnpm /home/jenkins/agent \
+    && chown -R jenkins:jenkins /home/jenkins
+
+# Switch to jenkins user
+USER jenkins
+
+# Set up NVM for jenkins user
+RUN echo 'export NVM_DIR="$HOME/.nvm"' >> ~/.bashrc \
+    && echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> ~/.bashrc \
+    && echo '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"' >> ~/.bashrc
+
+# Create npm configuration for optimal CI performance
+RUN npm config set cache /home/jenkins/.npm --global \
+    && npm config set progress false --global \
+    && npm config set audit-level moderate --global \
+    && yarn config set cache-folder /home/jenkins/.yarn \
+    && echo 'store-dir=/home/jenkins/.pnpm' > ~/.pnpmrc
+
+# Set up shell environment with Node.js tools
+RUN echo 'alias ll="ls -la"' >> ~/.bashrc \
+    && echo 'alias npm-check="npm outdated"' >> ~/.bashrc \
+    && echo 'alias yarn-check="yarn outdated"' >> ~/.bashrc \
+    && echo 'alias node16="nvm use 16"' >> ~/.bashrc \
+    && echo 'alias node18="nvm use 18"' >> ~/.bashrc \
+    && echo 'alias node20="nvm use 20"' >> ~/.bashrc \
+    && echo 'alias serve="npx http-server"' >> ~/.bashrc
+
+# Set working directory
+WORKDIR /home/jenkins/agent
+
+# Environment variables for Node.js optimization
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV NPM_CONFIG_CACHE=/home/jenkins/.npm
+ENV YARN_CACHE_FOLDER=/home/jenkins/.yarn
+ENV PNPM_HOME=/home/jenkins/.pnpm
+ENV CYPRESS_CACHE_FOLDER=/home/jenkins/.cache/Cypress
+ENV DOCKER_HOST=unix:///var/run/docker.sock
+ENV JENKINS_AGENT_WORKDIR=/home/jenkins/agent
+
+# Chrome/Chromium flags for headless testing
+ENV CHROME_BIN=/usr/bin/google-chrome
+ENV CHROMIUM_FLAGS="--no-sandbox --headless --disable-gpu --remote-debugging-port=9222"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD pgrep -f "jenkins-agent" && node --version || exit 1

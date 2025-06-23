@@ -33,9 +33,38 @@ jenkins_pull_images: false
 jenkins_wait_for_ready: true
 create_jenkins_user: true
 
-# SSL configuration (optional)
-jenkins_ssl_enabled: false
-jenkins_ssl_cert_path: ""
+# Corporate domain configuration
+jenkins_domain: "{{ lookup('env', 'JENKINS_DOMAIN') | default('jenkins.company.local') }}"
+jenkins_base_domain: "{{ lookup('env', 'BASE_DOMAIN') | default('company.local') }}"
+
+# SSL/TLS configuration
+jenkins_ssl_enabled: "{{ deployment_mode == 'remote' or lookup('env', 'JENKINS_SSL_ENABLED') | default('false') | bool }}"
+jenkins_generate_self_signed: "{{ deployment_mode == 'local' or lookup('env', 'JENKINS_GENERATE_SELF_SIGNED') | default('true') | bool }}"
+jenkins_ssl_cert_source_path: "{{ lookup('env', 'JENKINS_SSL_CERT_PATH') | default('/opt/corporate-certs') }}"
+
+# HAProxy configuration
+haproxy_version: "2.8"
+haproxy_http_port: 80
+haproxy_https_port: 443
+haproxy_stats_port: 8404
+haproxy_stats_uri: "/stats"
+haproxy_stats_user: "admin"
+haproxy_stats_password: "{{ lookup('env', 'HAPROXY_STATS_PASSWORD') | default('admin123') }}"
+haproxy_stats_auth_enabled: true
+haproxy_health_port: 8405
+haproxy_admin_enabled: false
+
+# SSL certificate paths for HAProxy
+haproxy_ssl_cert_path: "/etc/ssl/certs"
+haproxy_ssl_dhparam_path: "/etc/ssl/certs/dhparam.pem"
+
+# Jenkins backend servers for HAProxy load balancing
+jenkins_backend_servers:
+  - name: "jenkins-master-01"
+    address: "jenkins-master"
+    port: 8080
+    weight: 100
+    backup: false
 
 # Plugin configuration
 jenkins_plugins:

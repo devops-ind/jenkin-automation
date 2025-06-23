@@ -222,12 +222,54 @@ volumes:
       device: {{ jenkins_home_dir }}/data/pip_cache
 {% endif %}
   
-  jenkins-workspace:
-    name: jenkins-workspace
-    driver: local
-{% if deployment_mode == 'remote' %}
-    driver_opts:
-      type: none
-      o: bind
-      device: {{ jenkins_home_dir }}/data/jenkins_workspace
+  # HAProxy Load Balancer with SSL Termination
+  haproxy:
+    build:
+      context: ./jenkins
+      dockerfile: Dockerfile.haproxy
+    container_name: haproxy
+    hostname: haproxy
+    restart: unless-stopped
+    
+    ports:
+      - "{{ haproxy_http_port | default('80') }}:80"
+{% if deployment_mode == 'remote' and jenkins_ssl_enabled | default(true) %}
+      - "{{ haproxy_https_port | default('443') }}:443"
 {% endif %}
+      - "{{ haproxy_stats_port | default('8404') }}:{{ haproxy_stats_port | default('8404') }}"
+      - "{{ haproxy_health_port | default('8405') }}:{{ haproxy_health_port | default('8405') }}"
+    
+    environment:
+      # HAProxy doesn't need many environment variables, but these help with logging
+      - TZ={{ ansible_date_time.tz | default('UTC') }}
+      - HAPROXY_STATS_PORT={{ haproxy_stats_port | default('8404') }}
+    
+    volumes:
+      # HAProxy configuration (generated from template)
+      - ./jenkins/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      
+{% if jenkins_ssl_enabled | default(false) %}
+      # SSL certificates for HTTPS termination
+      - ./certificates/{{ jenkins_domain }}.pem:/etc/ssl/certs/{{ jenkins_domain }}.pem:ro
+{% if haproxy_ssl_dhparam_path is defined %}
+      - ./certificates/dhparam.pem:/etc/ssl/certs/dhparam.pem:ro
+{% endif %}
+{% endif %}
+    
+    networks:
+      - jenkins-network
+    
+    depends_on:
+      jenkins-master:
+        condition: service_healthy
+    
+    labels:
+      - "jenkins.component=load-balancer"
+      - "jenkins.deployment_mode={{ deployment_mode }}"
+      - "jenkins.domain={{ jenkins_domain }}"
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
