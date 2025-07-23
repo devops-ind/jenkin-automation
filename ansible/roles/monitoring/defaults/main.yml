@@ -1,0 +1,3 @@
+---
+prometheus_config_path: "./prometheus.yml"
+grafana_data_path: "grafana-storage"

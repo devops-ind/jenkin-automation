@@ -1,0 +1,8 @@
+---
+harbor_registry_url: "harbor.example.com"
+jenkins_master_image_name: "jenkins-master"
+jenkins_master_image_tag: "latest"
+jenkins_dind_agent_image_name: "jenkins-agent-dind"
+jenkins_dind_agent_image_tag: "latest"
+haproxy_image_name: "haproxy"
+haproxy_image_tag: "latest"

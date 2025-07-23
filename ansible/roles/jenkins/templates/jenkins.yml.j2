@@ -80,32 +80,26 @@ jenkins:
           dockerHost:
             uri: "{{ docker_host }}"
         templates:
-{% for agent_name, agent_config in jenkins_dynamic_agents.items() %}
-          # {{ agent_name | title }} dynamic agent
-          - labelString: "{{ agent_config.labels }}"
+          # Python dynamic agent
+          - labelString: "python-dynamic"
             dockerTemplateBase:
-              image: "{{ agent_config.image }}"
+              image: "python:3.9-slim"
               mounts:
-{% for mount in agent_config.mounts %}
-                - "{{ mount }}"
-{% endfor %}
+                - "type=volume,source=pip-cache,destination=/home/jenkins/.cache/pip"
+                - "type=volume,source=jenkins-workspace,destination=/home/jenkins/agent"
               environmentsString: |
-{% for env_key, env_value in agent_config.environment.items() %}
-                {{ env_key }}={{ env_value }}
-{% endfor %}
+                PIP_CACHE_DIR=/home/jenkins/.cache/pip
                 JENKINS_AGENT_WORKDIR=/home/jenkins/agent
                 DEPLOYMENT_MODE={{ deployment_mode }}
             remoteFs: "/home/jenkins/agent"
             connector:
               attach:
                 user: "jenkins"
-            instanceCapStr: "{{ agent_config.instance_cap }}"
+            instanceCapStr: "5"
             retentionStrategy:
-              idleMinutes: {{ agent_config.idle_minutes }}
+              idleMinutes: 10
             removeVolumes: true
             pullStrategy: PULL_LATEST
-
-{% endfor %}
 
 # Global tool configurations
 tool:

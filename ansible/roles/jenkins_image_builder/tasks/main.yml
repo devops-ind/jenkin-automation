@@ -1,0 +1,27 @@
+---
+- name: Build Jenkins Master Image
+  community.docker.docker_image:
+    name: "{{ harbor_registry_url }}/{{ jenkins_master_image_name }}:{{ jenkins_master_image_tag }}"
+    build:
+      path: "{{ role_path }}/.."
+      dockerfile: "templates/Dockerfile.master.j2"
+    source: build
+    push: yes
+
+- name: Build Jenkins DIND Agent Image
+  community.docker.docker_image:
+    name: "{{ harbor_registry_url }}/{{ jenkins_dind_agent_image_name }}:{{ jenkins_dind_agent_image_tag }}"
+    build:
+      path: "{{ role_path }}/.."
+      dockerfile: "templates/Dockerfile.dind.j2"
+    source: build
+    push: yes
+
+- name: Build HAProxy Image
+  community.docker.docker_image:
+    name: "{{ harbor_registry_url }}/{{ haproxy_image_name }}:{{ haproxy_image_tag }}"
+    build:
+      path: "{{ role_path }}/.."
+      dockerfile: "templates/Dockerfile.haproxy.j2"
+    source: build
+    push: yes

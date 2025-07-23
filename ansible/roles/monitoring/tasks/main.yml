@@ -1,0 +1,52 @@
+---
+- name: Deploy Node Exporter
+  community.docker.docker_container:
+    name: node-exporter
+    image: prom/node-exporter:latest
+    state: started
+    restart_policy: unless-stopped
+    ports:
+      - "9100:9100"
+    pid_mode: host
+    volumes:
+      - /:/host:ro,rslave
+
+- name: Deploy Prometheus Configuration
+  template:
+    src: prometheus.yml.j2
+    dest: /tmp/prometheus.yml
+
+- name: Deploy Prometheus
+  community.docker.docker_container:
+    name: prometheus
+    image: prom/prometheus:latest
+    state: started
+    restart_policy: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - /tmp/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - name: jenkins-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+
+- name: Deploy Grafana
+  community.docker.docker_container:
+    name: grafana
+    image: grafana/grafana:latest
+    state: started
+    restart_policy: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    networks:
+      - name: jenkins-network
+    depends_on:
+      - prometheus
+
+- name: Create Grafana Storage Volume
+  community.docker.docker_volume:
+    name: grafana-storage
+    driver: local

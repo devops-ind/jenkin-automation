@@ -94,35 +94,6 @@ jenkins_plugins:
   - "envinject:latest"
   - "copyartifact:latest"
 
-# Dynamic agent configuration
-jenkins_dynamic_agents:
-  maven:
-    image: "jenkins/inbound-agent:latest-maven"
-    labels: "maven java dynamic"
-    instance_cap: 5
-    idle_minutes: 10
-    environment:
-      JAVA_HOME: "/opt/java/openjdk-11"
-      MAVEN_OPTS: "-Xmx2g -Xms512m"
-      DOCKER_HOST: "unix:///var/run/docker.sock"
-    mounts:
-      - "type=bind,source=/var/run/docker.sock,destination=/var/run/docker.sock"
-      - "type=volume,source=maven-cache,destination=/home/jenkins/.m2"
-      - "type=volume,source=jenkins-workspace,destination=/home/jenkins/agent"
-  
-  python:
-    image: "jenkins/inbound-agent:latest-python"
-    labels: "python py dynamic"
-    instance_cap: 5
-    idle_minutes: 10
-    environment:
-      PYTHONPATH: "/usr/local/lib/python3.9/site-packages"
-      PIP_CACHE_DIR: "/home/jenkins/.cache/pip"
-      DOCKER_HOST: "unix:///var/run/docker.sock"
-    mounts:
-      - "type=bind,source=/var/run/docker.sock,destination=/var/run/docker.sock"
-      - "type=volume,source=pip-cache,destination=/home/jenkins/.cache/pip"
-      - "type=volume,source=jenkins-workspace,destination=/home/jenkins/agent"
 
 # Static DIND agent configuration
 jenkins_dind_agent:

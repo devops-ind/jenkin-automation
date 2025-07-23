@@ -26,7 +26,7 @@ This project provides a complete CI/CD infrastructure solution featuring:
 
 ### Prerequisites
 
-- **Docker and Docker Compose v2**: Required for container management
+- **Docker**: Required for container management
 - **VS Code with Dev Containers extension**: For local development
 - **SSH access to target VM**: For remote deployment (with sudo privileges)
 - **Python 3.8+**: For Ansible execution
@@ -180,21 +180,18 @@ jenkins-infrastructure/
 │   └── post-create.sh              # Auto-setup script
 ├── ansible/                        # Ansible infrastructure automation
 │   ├── site.yml                    # Main deployment playbook
+│   ├── build-images.yml            # Playbook to build Jenkins images
 │   ├── ansible.cfg                 # Ansible configuration
-│   ├── requirements.yml            # Ansible collections (Docker Compose v2)
+│   ├── requirements.yml            # Ansible collections
 │   ├── inventory/hosts.yml         # Environment definitions
 │   └── roles/                      # Ansible roles
-│       ├── docker/                 # Docker installation role
-│       └── jenkins/                # Jenkins infrastructure role
-│           ├── tasks/main.yml      # Deployment tasks
-│           ├── defaults/main.yml   # Configuration variables
-│           └── templates/          # Configuration templates
-│               ├── docker-compose.jenkins.yml.j2  # Main compose file
-│               ├── jenkins.yml.j2                 # JCasC configuration
-│               ├── haproxy.cfg.j2                # HAProxy config
-│               ├── Dockerfile.master.j2          # Jenkins master image
-│               ├── Dockerfile.dind.j2            # DIND agent image
-│               └── Dockerfile.haproxy.j2         # HAProxy image
+│       ├── jenkins/                # Jenkins infrastructure role
+│       ├── jenkins_image_builder/  # Role to build Jenkins images
+│       └── monitoring/             # Role to setup monitoring
+├── jenkins/                        # Jenkins pipelines
+│   └── pipelines/
+│       ├── build-images.groovy     # Pipeline to build Jenkins images
+│       └── backup.groovy           # Pipeline to backup Jenkins
 ├── environments/                   # Platform-specific configurations
 │   ├── dev-local.env              # Development environment
 │   ├── prod-vm.env                # Production RHEL server
@@ -246,7 +243,6 @@ collections:
   - ansible.posix: ">=1.5.0"            # POSIX utilities
 ```
 
-**Important**: Uses Docker Compose v2 (`docker_compose_v2` module) instead of deprecated v1.
 
 ### Customizing Jenkins
 
@@ -525,7 +521,7 @@ DOCKER_HOST_IP=192.168.1.100 scripts/deploy.sh --mode remote deploy
 ## 📝 Version Information
 
 - **Ansible**: 5.0+ (community.docker 3.4+)
-- **Docker**: 20.10+ with Compose v2
+- **Docker**: 20.10+
 - **Jenkins**: 2.401.3-LTS
 - **Python**: 3.8+ (for Ansible execution)
 - **Ubuntu**: 24.04 (dev container base)
@@ -560,8 +556,16 @@ python py dynamic                        # Dynamic Python agents
 
 - [Jenkins Configuration as Code Documentation](https://jenkins.io/projects/jcasc/)
 - [Ansible Docker Collection](https://docs.ansible.com/ansible/latest/collections/community/docker/)
-- [Docker Compose v2 Migration Guide](https://docs.docker.com/compose/compose-v2/)
 - [HAProxy Configuration Reference](https://docs.haproxy.org/2.8/configuration.html)
+
+---
+
+## 💡 Suggestions for Improvement
+
+* **Secret Management:** Currently, secrets are managed as Ansible variables. For a production environment, it is recommended to use a dedicated secret management solution like HashiCorp Vault or AWS Secrets Manager.
+* **Logging:** The current logging setup is basic. For a production environment, it is recommended to use a dedicated logging stack like ELK (Elasticsearch, Logstash, and Kibana) or EFK (Elasticsearch, Fluentd, and Kibana) to aggregate and analyze logs from all the components of the infrastructure.
+* **High Availability:** The current setup does not provide high availability for the Jenkins master. For a production environment, it is recommended to set up a multi-node Jenkins cluster with a load balancer to provide high availability.
+* **Automated Backups:** The current backup solution is manual. For a production environment, it is recommended to automate the backup process and store the backups in a durable and secure location like an S3 bucket.
 
 ---
 
