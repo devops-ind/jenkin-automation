@@ -1,0 +1,7 @@
+---
+- name: Build and Push Jenkins Images
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  roles:
+    - role: jenkins_image_builder

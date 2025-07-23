@@ -109,6 +109,7 @@
     deployment_mode: "{{ lookup('env', 'DEPLOYMENT_MODE') | default('local') }}"
   roles:
     - role: jenkins
+    - role: monitoring
 
 - name: Post-deployment Verification
   hosts: localhost
