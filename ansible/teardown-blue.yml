@@ -1,0 +1,13 @@
+---
+- name: Tear Down Blue Environment
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  tasks:
+    - name: Stop and remove blue environment containers
+      community.docker.docker_container:
+        name: "{{ item }}"
+        state: absent
+      with_items:
+        - jenkins-master-blue
+        - jenkins-agent-ssh-blue

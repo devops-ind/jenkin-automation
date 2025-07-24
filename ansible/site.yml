@@ -108,6 +108,7 @@
   vars:
     deployment_mode: "{{ lookup('env', 'DEPLOYMENT_MODE') | default('local') }}"
   roles:
+    - role: haproxy
     - role: jenkins
     - role: monitoring
 

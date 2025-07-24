@@ -11,7 +11,7 @@ This project provides a complete CI/CD infrastructure solution featuring:
 - **Unified deployment**: Same codebase works for local development and remote production
 - **JCasC configuration**: Jenkins configured entirely through code
 - **Mixed agent strategy**: Static DIND agent + dynamic Python/Maven agents
-- **HAProxy load balancing**: SSL termination and high availability
+- **High Availability**: Blue-green deployments with HAProxy for zero-downtime updates.
 - **Cross-platform support**: Windows WSL, macOS, Linux local + RHEL remote
 
 ### Components
@@ -21,6 +21,19 @@ This project provides a complete CI/CD infrastructure solution featuring:
 - **Dynamic Agents**: On-demand Maven and Python build agents with auto-scaling
 - **HAProxy Load Balancer**: SSL termination, stats monitoring, health checks
 - **Ansible Automation**: Complete infrastructure deployment and management
+
+## 🚀 High Availability and Blue-Green Deployments
+
+This project supports high availability for Jenkins using a blue-green deployment strategy. This allows you to update Jenkins to a new version with zero downtime.
+
+The `blue-green-deployment` pipeline orchestrates this process. When you run this pipeline with a new image tag, it will:
+
+1.  Deploy the new version of Jenkins to the "green" environment.
+2.  Run tests against the green environment to ensure it's healthy.
+3.  Switch the HAProxy load balancer to route all traffic to the green environment.
+4.  Tear down the old "blue" environment.
+
+This process ensures that there is no interruption of service during the update.
 
 ## 🚀 Quick Start
 

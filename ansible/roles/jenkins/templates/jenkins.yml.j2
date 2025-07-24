@@ -37,31 +37,28 @@ jenkins:
             assignments:
               - "authenticated"
 
-  # Static nodes configuration
+  # Permanent SSH agent
   nodes:
     - permanent:
-        name: "{{ jenkins_dind_agent.name }}"
-        description: "Static Docker-in-Docker agent for managing dynamic nodes ({{ deployment_mode }})"
-        numExecutors: {{ jenkins_dind_agent.executors }}
-        mode: NORMAL
-        labelString: "{{ jenkins_dind_agent.labels }}"
-        remoteFS: "{{ jenkins_dind_agent.workspace }}"
+        name: "permanent-ssh-agent"
+        remoteFS: "/home/jenkins/agent"
         launcher:
-          inbound:
-            workDirSettings:
-              disabled: false
-              failIfWorkDirIsMissing: false
-              internalDir: "remoting"
-        retentionStrategy: "always"
-        nodeProperties:
-          - envVars:
-              env:
-                - key: "DOCKER_HOST"
-                  value: "{{ docker_host }}"
-                - key: "DOCKER_BUILDKIT"
-                  value: "1"
-                - key: "DEPLOYMENT_MODE"
-                  value: "{{ deployment_mode }}"
+          ssh:
+            credentialsId: "jenkins-agent-ssh-key"
+            host: "jenkins-agent-ssh"
+            port: 22
+            sshHostKeyVerificationStrategy: "nonVerifying"
+  credentials:
+    system:
+      domainCredentials:
+        - credentials:
+            - basicSSHUserPrivateKey:
+                scope: SYSTEM
+                id: "jenkins-agent-ssh-key"
+                username: "jenkins"
+                privateKeySource:
+                  directEntry:
+                    privateKey: "{{ jenkins_agent_ssh_private_key }}"
 
   # Global environment variables
   globalNodeProperties:
@@ -80,26 +77,32 @@ jenkins:
           dockerHost:
             uri: "{{ docker_host }}"
         templates:
-          # Python dynamic agent
-          - labelString: "python-dynamic"
+{% for agent_name, agent_config in jenkins_dynamic_agents.items() %}
+          # {{ agent_name | title }} dynamic agent
+          - labelString: "{{ agent_config.labels }}"
             dockerTemplateBase:
-              image: "python:3.9-slim"
+              image: "{{ agent_config.image }}"
               mounts:
-                - "type=volume,source=pip-cache,destination=/home/jenkins/.cache/pip"
-                - "type=volume,source=jenkins-workspace,destination=/home/jenkins/agent"
+{% for mount in agent_config.mounts %}
+                - "{{ mount }}"
+{% endfor %}
               environmentsString: |
-                PIP_CACHE_DIR=/home/jenkins/.cache/pip
+{% for env_key, env_value in agent_config.environment.items() %}
+                {{ env_key }}={{ env_value }}
+{% endfor %}
                 JENKINS_AGENT_WORKDIR=/home/jenkins/agent
                 DEPLOYMENT_MODE={{ deployment_mode }}
             remoteFs: "/home/jenkins/agent"
             connector:
-              attach:
-                user: "jenkins"
-            instanceCapStr: "5"
+              jnlp:
+                jenkinsUrl: "http://jenkins-master-{{ deployment_mode }}:8080"
+            instanceCapStr: "{{ agent_config.instance_cap }}"
             retentionStrategy:
-              idleMinutes: 10
+              idleMinutes: {{ agent_config.idle_minutes }}
             removeVolumes: true
             pullStrategy: PULL_LATEST
+
+{% endfor %}
 
 # Global tool configurations
 tool:

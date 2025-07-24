@@ -11,8 +11,10 @@ jenkins_group: "{{ deployment_mode == 'local' and 'ansible' or 'jenkins' }}"
 
 # Jenkins master configuration
 jenkins_version: "2.401.3-lts"
-jenkins_master_port: 8080
-jenkins_agent_port: 50000
+jenkins_master_port_blue: 8080
+jenkins_agent_port_blue: 50000
+jenkins_master_port_green: 8081
+jenkins_agent_port_green: 50001
 jenkins_host: "{{ deployment_mode == 'local' and 'localhost' or ansible_host }}"
 
 # Jenkins admin configuration
@@ -95,9 +97,22 @@ jenkins_plugins:
   - "copyartifact:latest"
 
 
-# Static DIND agent configuration
-jenkins_dind_agent:
-  name: "dind-agent"
-  labels: "dind docker-manager static privileged"
-  executors: 2
-  workspace: "/home/jenkins/agent"
+# Dynamic agent configuration
+jenkins_dynamic_agents:
+  python:
+    image: "python:3.9-slim"
+    labels: "python-dynamic"
+    instance_cap: 5
+    idle_minutes: 10
+    environment:
+      PIP_CACHE_DIR: "/home/jenkins/.cache/pip"
+    mounts:
+      - "type=volume,source=pip-cache,destination=/home/jenkins/.cache/pip"
+      - "type=volume,source=jenkins-workspace,destination=/home/jenkins/agent"
+
+# SSH agent configuration
+jenkins_agent_ssh_pubkey: "ssh-rsa AAAA..."
+jenkins_agent_ssh_private_key: |
+  -----BEGIN RSA PRIVATE KEY-----
+  ...
+  -----END RSA PRIVATE KEY-----

@@ -1,0 +1,15 @@
+---
+- name: Deploy HAProxy
+  community.docker.docker_container:
+    name: haproxy
+    image: haproxy:latest
+    state: started
+    restart_policy: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8404:8404"
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    networks:
+      - name: jenkins-network

@@ -5,7 +5,7 @@ FROM alpine:latest
 
 # Install dependencies
 RUN apk add --no-cache \
-    openssh-client \
+    openssh \
     docker \
     docker-compose \
     git \
@@ -20,6 +20,17 @@ RUN addgroup -S jenkins && adduser -S jenkins -G jenkins
 
 # Add jenkins user to docker group
 RUN addgroup jenkins docker
+
+# Configure SSH server
+RUN ssh-keygen -A
+RUN echo "PasswordAuthentication no" >> /etc/ssh/sshd_config
+RUN echo "ChallengeResponseAuthentication no" >> /etc/ssh/sshd_config
+
+# Expose SSH port
+EXPOSE 22
+
+# Start SSH server
+CMD ["/usr/sbin/sshd", "-D"]
 
 # Create Docker daemon configuration for DIND
 RUN mkdir -p /etc/docker
