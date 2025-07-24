@@ -24,17 +24,26 @@
     name: jenkins_shared_workspace
     driver: local
 
+- name: Generate SSH key for Jenkins agent
+  openssh_keypair:
+    path: /tmp/jenkins_agent_key
+    type: rsa
+    size: 4096
+    state: present
+    force: no
+  delegate_to: localhost
+
 - name: Deploy Jenkins Master
   community.docker.docker_container:
-    name: jenkins-master
+    name: "jenkins-master-{{ item }}"
     image: "{{ harbor_registry_url }}/{{ jenkins_master_image_name }}:{{ jenkins_master_image_tag }}"
     state: started
     restart_policy: unless-stopped
     ports:
-      - "{{ jenkins_master_port }}:8080"
-      - "{{ jenkins_agent_port }}:50000"
+      - "{{ jenkins_master_port_blue if item == 'blue' else jenkins_master_port_green }}:8080"
+      - "{{ jenkins_agent_port_blue if item == 'blue' else jenkins_agent_port_green }}:50000"
     volumes:
-      - jenkins_home:/var/jenkins_home
+      - "jenkins_home_{{ item }}:/var/jenkins_home"
       - /var/run/docker.sock:/var/run/docker.sock
       - ./jenkins/master/jcasc:/var/jenkins_home/casc_configs:ro
     networks:
@@ -44,9 +53,12 @@
       JENKINS_ADMIN_PASSWORD: "{{ jenkins_admin_password }}"
       JAVA_OPTS: "-Djenkins.install.runSetupWizard=false -Xmx{{ jenkins_master_memory }} -Xms{{ jenkins_master_memory_min }}"
       JENKINS_OPTS: "--httpPort=8080"
-      JENKINS_SLAVE_AGENT_PORT: "{{ jenkins_agent_port }}"
+      JENKINS_SLAVE_AGENT_PORT: "{{ jenkins_agent_port_blue if item == 'blue' else jenkin_agent_port_green }}"
       CASC_JENKINS_CONFIG: "/var/jenkins_home/casc_configs"
       DOCKER_HOST: "unix:///var/run/docker.sock"
+  with_items:
+    - blue
+    - green
 
 - name: Install Jenkins Job Builder
   pip:
@@ -59,26 +71,38 @@
     name: "{{ item.name }}"
     user: "{{ jenkins_admin_user }}"
     password: "{{ jenkins_admin_password }}"
-    url: "http://localhost:{{ jenkins_master_port }}"
+    url: "http://localhost:{{ jenkins_master_port_blue }}"
   with_items:
     - { name: 'build-images', path: 'jenkins/pipelines/build-images.groovy' }
     - { name: 'backup', path: 'jenkins/pipelines/backup.groovy' }
+    - { name: 'blue-green-deployment', path: 'jenkins/pipelines/blue-green-deployment.groovy' }
+
+- name: Add public key to authorized_keys
+  copy:
+    src: /tmp/jenkins_agent_key.pub
+    dest: /tmp/authorized_keys
+    owner: root
+    group: root
+    mode: 0644
+  delegate_to: localhost
 
 - name: Deploy Jenkins SSH Agent
   community.docker.docker_container:
-    name: jenkins-agent-ssh
+    name: "jenkins-agent-ssh-{{ item }}"
     image: jenkinsci/ssh-agent
     state: started
     restart_policy: unless-stopped
     privileged: yes
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - jenkins_agent_dind_workspace:/home/jenkins/agent
-      - jenkins_docker_data:/var/lib/docker
-      - jenkins_shared_workspace:/shared/workspace
+      - "jenkins_agent_dind_workspace_{{ item }}:/home/jenkins/agent"
+      - "jenkins_docker_data_{{ item }}:/var/lib/docker"
+      - "jenkins_shared_workspace_{{ item }}:/shared/workspace"
+      - /tmp/authorized_keys:/home/jenkins/.ssh/authorized_keys
     networks:
       - name: jenkins-network
     depends_on:
-      - jenkins-master
-    env:
-      JENKINS_AGENT_SSH_PUBKEY: "{{ jenkins_agent_ssh_pubkey }}"
+      - "jenkins-master-{{ item }}"
+  with_items:
+    - blue
+    - green

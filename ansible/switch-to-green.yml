@@ -1,0 +1,18 @@
+---
+- name: Switch to Green Environment
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  tasks:
+    - name: Update HAProxy configuration
+      lineinfile:
+        path: ansible/roles/haproxy/templates/haproxy.cfg.j2
+        regexp: '^    default_backend jenkins_blue'
+        line: '    default_backend jenkins_green'
+      delegate_to: localhost
+
+    - name: Reload HAProxy
+      community.docker.docker_container:
+        name: haproxy
+        state: started
+        restart: yes
