@@ -1,0 +1,34 @@
+---
+- name: Deploy Jenkins Infrastructure
+  hosts: all
+  become: yes
+  roles:
+    - common
+    - docker
+    - security
+
+- name: Deploy Harbor Registry
+  hosts: harbor
+  become: yes
+  roles:
+    - harbor
+
+- name: Deploy Jenkins Infrastructure
+  hosts: jenkins_masters,jenkins_agents
+  become: yes
+  roles:
+    - jenkins-infrastructure
+    - shared-storage
+
+- name: Deploy Monitoring Stack
+  hosts: monitoring
+  become: yes
+  roles:
+    - monitoring
+
+- name: Setup High Availability
+  hosts: jenkins_masters
+  become: yes
+  roles:
+    - high-availability
+  when: enable_ha | default(false)
