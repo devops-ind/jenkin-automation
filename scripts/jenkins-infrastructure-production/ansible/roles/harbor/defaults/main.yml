@@ -1,0 +1,4 @@
+---
+# Default variables for harbor role
+harbor_enabled: true
+harbor_version: "latest"

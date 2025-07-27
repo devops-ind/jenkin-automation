@@ -1,0 +1,9 @@
+---
+# Tasks for docker role
+- name: Include docker tasks
+  include_tasks: "{{ ansible_os_family | lower }}.yml"
+  when: ansible_os_family is defined
+
+- name: Default docker configuration
+  debug:
+    msg: "Configuring docker role"

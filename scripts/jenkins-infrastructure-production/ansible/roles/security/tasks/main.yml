@@ -1,0 +1,9 @@
+---
+# Tasks for security role
+- name: Include security tasks
+  include_tasks: "{{ ansible_os_family | lower }}.yml"
+  when: ansible_os_family is defined
+
+- name: Default security configuration
+  debug:
+    msg: "Configuring security role"

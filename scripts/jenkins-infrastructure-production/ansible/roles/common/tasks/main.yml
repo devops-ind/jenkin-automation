@@ -1,0 +1,9 @@
+---
+# Tasks for common role
+- name: Include common tasks
+  include_tasks: "{{ ansible_os_family | lower }}.yml"
+  when: ansible_os_family is defined
+
+- name: Default common configuration
+  debug:
+    msg: "Configuring common role"

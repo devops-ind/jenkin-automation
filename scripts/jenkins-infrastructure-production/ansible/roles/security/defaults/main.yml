@@ -1,0 +1,4 @@
+---
+# Default variables for security role
+security_enabled: true
+security_version: "latest"

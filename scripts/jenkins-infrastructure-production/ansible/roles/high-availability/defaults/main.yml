@@ -1,0 +1,4 @@
+---
+# Default variables for high-availability role
+high-availability_enabled: true
+high-availability_version: "latest"

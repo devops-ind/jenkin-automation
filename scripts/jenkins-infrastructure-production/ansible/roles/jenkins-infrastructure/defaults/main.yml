@@ -1,0 +1,4 @@
+---
+# Default variables for jenkins-infrastructure role
+jenkins-infrastructure_enabled: true
+jenkins-infrastructure_version: "latest"

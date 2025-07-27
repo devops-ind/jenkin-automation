@@ -1,0 +1,4 @@
+---
+# Default variables for common role
+common_enabled: true
+common_version: "latest"

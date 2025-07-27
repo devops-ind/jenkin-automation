@@ -1,0 +1,4 @@
+---
+# Default variables for docker role
+docker_enabled: true
+docker_version: "latest"

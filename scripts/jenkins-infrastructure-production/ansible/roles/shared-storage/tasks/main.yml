@@ -1,0 +1,9 @@
+---
+# Tasks for shared-storage role
+- name: Include shared-storage tasks
+  include_tasks: "{{ ansible_os_family | lower }}.yml"
+  when: ansible_os_family is defined
+
+- name: Default shared-storage configuration
+  debug:
+    msg: "Configuring shared-storage role"
