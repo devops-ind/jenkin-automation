@@ -1,0 +1,8 @@
+---
+- name: bootstrap playbook
+  hosts: all
+  become: yes
+  tasks:
+    - name: Execute bootstrap
+      debug:
+        msg: "Running bootstrap tasks"

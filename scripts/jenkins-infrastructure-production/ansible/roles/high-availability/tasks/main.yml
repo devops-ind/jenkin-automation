@@ -1,0 +1,9 @@
+---
+# Tasks for high-availability role
+- name: Include high-availability tasks
+  include_tasks: "{{ ansible_os_family | lower }}.yml"
+  when: ansible_os_family is defined
+
+- name: Default high-availability configuration
+  debug:
+    msg: "Configuring high-availability role"

@@ -1,0 +1,9 @@
+---
+# Tasks for harbor role
+- name: Include harbor tasks
+  include_tasks: "{{ ansible_os_family | lower }}.yml"
+  when: ansible_os_family is defined
+
+- name: Default harbor configuration
+  debug:
+    msg: "Configuring harbor role"
